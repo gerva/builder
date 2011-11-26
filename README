@@ -1,0 +1,8 @@
+Builder
+==============
+Requires python > 2.7
+
+running tests:
+==============
+from the current directoy, run:
+python -m unittest discover

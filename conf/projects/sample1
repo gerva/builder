@@ -1,0 +1,21 @@
+[project]
+configuration_version = 1
+name = a project without a name
+type = mvn
+build_cmd = mvn clean install
+cwd = .
+build_results = target/*.tar.gz
+publish_results = True
+
+[scm_repository]
+type = git
+branch = 
+username =
+password =
+url =
+
+[binary_repository]
+url = 
+username =
+password =
+

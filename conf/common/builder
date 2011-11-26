@@ -1,0 +1,18 @@
+[builder]
+configuration_version = 1
+git_mirror_dir = ~/.git_mirrors
+log_file = ~/builder.log
+
+[http_proxy]
+host =
+port =
+username =
+password =
+
+[https_proxy]
+host =
+port =
+username =
+password =
+
+
