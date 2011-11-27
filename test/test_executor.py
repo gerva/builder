@@ -8,6 +8,7 @@ class testExecutor(unittest.TestCase):
     """
     def setUp(self):
         self.e = ex.Executor()
+        self.e.log_enable = False
 
     def testSimpleExecute(self):
         """
@@ -23,8 +24,11 @@ class testExecutor(unittest.TestCase):
         """
         passing to the executor, wrong commands
         """
+        self.assertRaises(TypeError, lambda: self.e.execute(None, cwd=None, env=None, timeout=None))
         self.assertRaises(TypeError, lambda: self.e.execute(cmd='ls', cwd=None, env=None, timeout=None))
-        self.assertRaises(TypeError, lambda: self.e.execute(cmd=1, cwd=None, env=None, timeout=None))
+        self.assertRaises(TypeError, lambda: self.e.execute(cmd=['ls'], cwd=['/nonexisitingdir'], env=None, timeout=None))
+        self.assertRaises(ex.ExecutorError, lambda: self.e.execute(cmd=['ls'], cwd='/nonexisitingdir', env=None, timeout=None))
         self.assertRaises(TypeError, lambda: self.e.execute(cmd=1, cwd='aaaa', env=None, timeout=None))
+        self.assertRaises(TypeError, lambda: self.e.execute(None, cwd='aaaa', env=None, timeout=None))
         self.assertRaises(ex.ExecutorError, lambda: self.e.execute(['cd'], cwd='aaaa', env=None, timeout=None))
 

@@ -2,17 +2,28 @@ import sys
 import os
 import subprocess
 import tempfile
+import datetime 
+import log
+log = log.logger(__name__)
 
 class Executor(object):
    """
    a wrapper for subprocess
    """
    def __init__(self):
-       # 
-       self.out_fd = None 
-       self.err_fd = None 
-       self.stdout_r = None 
-       self.stderr_r = None 
+       # logging
+       self.out_fd = None
+       self.err_fd = None
+       self.stdout_r = None
+       self.stderr_r = None
+       # command 
+       self.proc = None
+       self.cmd = None
+       self.cwd = None
+       self.env = None
+       self.timeout = None
+       # enable log?
+       self.log_enable = True
 
    def __del__(self):
        # closing open files (if any)
@@ -31,26 +42,87 @@ class Executor(object):
        self.stdout_r = open(self.out_fd.name, 'r')
        self.stderr_r = open(self.err_fd.name, 'r')
 
-   def execute(self, cmd, cwd, env, timeout):
-       # check cmd is a list
+   def _set_cmd(self, cmd):
        if not isinstance(cmd, list):
            raise TypeError('cmd is not a list')
-       # ensuring working directory exists
+       self.cmd = cmd
+
+   def _set_cwd(self, cwd):
        try:
            if not os.path.exists(cwd):
                msg = 'not existing cwd ({0})'.format(cwd)
                raise ExecutorError(msg)
        except TypeError, e:
          if cwd is not None:
-             print 'cwd error: expected string'
-             raise 
+             log.error('cwd error: expected string')
+             raise
+       self.cwd = cwd
+
+   def _set_env(self, env):
+       if not isinstance(env, dict) and env is not None:
+           raise TypeError('env is not a dictionary')
+       self.env = env
+
+   def _set_timeout(self, timeout):
+       if not isinstance(timeout, (int, float)) and timeout is not None:
+           raise TypeError('timeout should be None, int or float') 
+       try:
+           self.timeout = datetime.datetime.now() + datetime.timedelta(0,timeout)
+       except TypeError:
+           pass
+
+   def sanitise_input(self, cmd, cwd, env, timeout):
+       # check cmd is a list
+       self._set_cmd(cmd)
+       # ensuring working directory exists or is None
+       self._set_cwd(cwd)
+       # check env is a dict
+       self._set_env(env)
+       # check timeout 
+       self._set_timeout(timeout)
+       log.debug('executing:')
+       log.debug('cmd: {0}'.format(' '.join(self.cmd)))
+       log.debug('cwd: {0}'.format(self.cwd))
+       log.debug('env: {0}'.format(self.env))
+
+   def execute(self, cmd, cwd, env, timeout):
+       self.sanitise_input(cmd, cwd, env, timeout)
        self.reset_files()
-       proc = subprocess.Popen(cmd, cwd=cwd, env=env, 
+       self.proc = subprocess.Popen(self.cmd, cwd=self.cwd, env=self.env,
                                stdout = self.out_fd,
                                stderr = self.err_fd)
-       proc.wait()
-       return proc.returncode 
-   
+       self.start_time = datetime.datetime.now()
+       return self.wait_completion_or_timeout()
+
+   def wait_completion_or_timeout(self):
+       while self.proc.poll() is None or self.time_to_stop():
+               self.write_process_out_to_log()
+       # log all remaining lines from out and err files
+       if self.log_enable:
+           out_file_read = open(self.out_fd.name, 'r')
+           for line in out_file_read.readlines() :
+               log.debug(line.strip())
+           err_file_read = open(self.err_fd.name, 'r')
+           for line in err_file_read.readlines() :
+               log.error(line.strip())
+       log.debug('exit code: {0}'.format(self.proc.returncode))
+       return self.proc.returncode
+
+   def time_to_stop(self):
+       try:
+           return datetime.datetime.now()  >= self.timeout
+       except TypeError:
+           return False
+
+   def write_process_out_to_log(self):
+       if not self.log_enable:
+           stdout = self.stdout_r.readline().rstrip()
+           if stdout != '': 
+               log.debug('stdout: {0}'.format(stdout))
+       stderr = self.stderr_r.readline().rstrip()
+       if stderr != '': 
+           log.error('stderr: {0}'.format(stderr))
+
 class ExecutorError(Exception):
    def __init__(self, value):
        self.value = value
