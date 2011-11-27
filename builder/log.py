@@ -30,7 +30,7 @@ cfg = {
   },
 }
 
-def logger(logger_name, file_name):
+def logger(logger_name, file_name='/tmp/builder.log'):
     cfg['handlers']['file']['filename'] = file_name
     logging.config.dictConfig(cfg)
     return logging.getLogger(logger_name)
