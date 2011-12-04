@@ -6,7 +6,7 @@ import datetime
 import log
 log = log.logger(__name__)
 
-class Executor(object):
+class ExternalProcess(object):
    """
    a wrapper for subprocess
    """
@@ -51,7 +51,7 @@ class Executor(object):
        try:
            if not os.path.exists(cwd):
                msg = 'not existing cwd ({0})'.format(cwd)
-               raise ExecutorError(msg)
+               raise ExternalProcessError(msg)
        except TypeError, e:
          if cwd is not None:
              log.debug('cwd error: expected string')
@@ -141,7 +141,7 @@ class Executor(object):
        if stderr != '':
            log.debug('stderr: {0}'.format(stderr))
 
-class ExecutorError(Exception):
+class ExternalProcessError(Exception):
    def __init__(self, value):
        self.value = value
 

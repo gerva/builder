@@ -1,13 +1,13 @@
 import unittest
-import builder.executor as ex
+import builder.process as ex
 import os
 
-class testExecutor(unittest.TestCase):
+class testExternalProcess(unittest.TestCase):
     """
     test class for executor module
     """
     def setUp(self):
-        self.e = ex.Executor()
+        self.e = ex.ExternalProcess()
         self.e.log_enable = False
 
     def testSimpleExecute(self):
@@ -38,7 +38,7 @@ class testExecutor(unittest.TestCase):
         # cwd should be a string... passing a list
         self.assertRaises(TypeError, lambda: self.e.execute(cmd=['ls'], cwd=['/nonexisitingdir'], env=None, timeout=None))
         # cwd does not exist 
-        self.assertRaises(ex.ExecutorError, lambda: self.e.execute(cmd=['ls'], cwd='/nonexisitingdir', env=None, timeout=None))
+        self.assertRaises(ex.ExternalProcessError, lambda: self.e.execute(cmd=['ls'], cwd='/nonexisitingdir', env=None, timeout=None))
         # env 
         self.assertRaises(TypeError, lambda: self.e.execute(['cd'], cwd=None, env=list(), timeout=None))
         self.assertRaises(TypeError, lambda: self.e.execute(['cd'], cwd=None, env=1, timeout=None))
