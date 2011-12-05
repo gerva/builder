@@ -67,13 +67,13 @@ class GitInterface(object):
     def add_tag(self, tag_name):
         pass
 
-    def get_tag_names(self, remote):
-        return [ tag.name for tag in self.get_tags(remote) ]
 
-    def get_tags(self, remote):
+    def ls_remote(self, remote):
         """
-        returns a list of remote tags
+        returns the output of git ls-remote <remote>
         """
+        if remote not in self.get_remotes():
+            raise GitError('requested remote does not exist: {0}'.format(remote))
         cmd = ['git', 'ls-remote', remote]
         cwd = self.mirror_directory
         git_ls = process.ExternalProcess()
@@ -81,8 +81,34 @@ class GitInterface(object):
         if returncode != 0:
             raise GitError('failed to execute: {0}; cwd = {1}; return code = {1}'.format(' '.join(cmd), cwd, returncode))
         with open(git_ls.out_fd.name) as out:
-            lines = out.readlines()
-        return [ GitTag(tag) for tag in lines ]
+             lines = out.readlines()
+        return lines
+
+    def get_remote_tags(self, remote):
+        """
+        returns a list of remote tags
+        """
+        tags = [ GitTag(tag) for tag in self.ls_remote(remote) ]
+        return [ tag for tag in tags if tag.name is not None ]
+
+    def get_remote_tag_names(self, remote):
+        """
+        returns a list of tag names
+        """
+        return [ tag.name for tag in self.get_remote_tags(remote) ]
+
+    def get_remote_branches(self, remote):
+        """
+        returns a list of remote branches
+        """
+        branches = [ GitBranch(branch) for branch in self.ls_remote(remote) ]
+        return [ branch for branch in branches if branch.name is not None ]
+
+    def get_remote_branch_names(self, remote):
+        """
+        returns a list of remote branches
+        """
+        return [ branch.name for branch in self.get_remote_branches(remote) ]
 
     def get_remotes(self):
         cmd = ['git', 'remote', '-v']
@@ -95,8 +121,6 @@ class GitInterface(object):
             lines = out.readlines()
         return [ remote.split('\t')[0] for remote in lines if  '(fetch)' in remote ]
 
-    def get_branches(self):
-        pass
 
     def push(self, remote):
         pass
@@ -120,12 +144,26 @@ class GitError(Exception):
 
 class GitTag(object):
     def __init__(self, tag):
-        self.commitId = None
-        self.name = None
         if tag is None:
             return
+        self.commitId = None
+        self.name = None
         if 'refs/tags' in tag:
             self.commitId, dummy, self.name = tag.strip().partition('refs/tags/')
+            self.commitId = self.commitId.strip()
+
+    def __str__(self):
+        return '{0}: {1}'.format(self.commitId, self.name)
+
+
+class GitBranch(object):
+    def __init__(self, branch):
+        if branch is None:
+            return
+        self.commitId = None
+        self.name = None
+        if 'refs/heads' in branch:
+            self.commitId, dummy, self.name = branch.strip().partition('refs/heads/')
             self.commitId = self.commitId.strip()
 
     def __str__(self):
