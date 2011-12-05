@@ -20,6 +20,7 @@ cfg = {
       'file': {
           '()': 'logging.FileHandler',
           'formatter': 'long',
+          'level': 'DEBUG',
           'mode' : 'a',
           'filename': '/tmp/test.log',
       },
