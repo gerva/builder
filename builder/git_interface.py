@@ -46,8 +46,12 @@ class GitInterface(object):
         invoke this method before when you don't need to access
         the git repository anymore. It takes care of cleaning up the disk
         """
-        if os.path.exists(self.working_copy):
-             shutil.rmtree(self.working_copy)
+        try:
+           os.path.exists(self.working_copy)
+           shutil.rmtree(self.working_copy)
+        except TypeError, e:
+           # working dir is None
+           pass
 
     def fetch(self):
         """

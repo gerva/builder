@@ -14,6 +14,7 @@ class testGitInterface(unittest.TestCase):
         self.git = git.GitInterface(self.mirror_dir, sys.path[0])
 
     def tearDown(self):
+        self.git.close()
         shutil.rmtree(self.mirror_dir)
 
     def testGitTag(self):
