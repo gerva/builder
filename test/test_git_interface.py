@@ -30,4 +30,5 @@ class testGitInterface(unittest.TestCase):
         self.assertEqual(os.path.exists(self.mirror_dir), True)
         self.assertTrue('test' in self.git.get_tag_names('origin'))
         self.assertTrue('origin' in self.git.get_remotes())
+        self.assertRaises(git.GitError, lambda: self.git.get_tag_names('wrong remote name'))
 
