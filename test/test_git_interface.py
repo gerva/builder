@@ -28,7 +28,11 @@ class testGitInterface(unittest.TestCase):
         """
         self.git.update_mirror()
         self.assertEqual(os.path.exists(self.mirror_dir), True)
-        self.assertTrue('test' in self.git.get_tag_names('origin'))
+        # tags
         self.assertTrue('origin' in self.git.get_remotes())
-        self.assertRaises(git.GitError, lambda: self.git.get_tag_names('wrong remote name'))
+        self.assertTrue('test' in self.git.get_remote_tag_names('origin'))
+        self.assertRaises(git.GitError, lambda: self.git.get_remote_tag_names('wrong remote name'))
+        # branches
+        self.assertTrue('master' in self.git.get_remote_branch_names('origin'))
+        self.assertRaises(git.GitError, lambda: self.git.get_remote_branch_names('wrong remote name'))
 
