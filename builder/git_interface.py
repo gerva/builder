@@ -121,6 +121,32 @@ class GitInterface(object):
             lines = out.readlines()
         return [ remote.split('\t')[0] for remote in lines if  '(fetch)' in remote ]
 
+    def add_remote(self, name, url):
+        """
+        a lightweight version of git remote add <options> <name> <url>
+        <options> is not supported!
+        """
+        if name in self.get_remotes():
+            raise GitError('cannot add {0}: remote already exists'.format(name))
+        cmd = ['git', 'remote', 'add', name, url ]
+        cwd = self.mirror_directory
+        git_remote_add = process.ExternalProcess()
+        returncode = git_remote_add.execute(cmd, cwd=cwd, env=None, timeout=None)
+        if returncode != 0:
+            raise GitError('failed to execute: {0}; cwd = {1}; return code = {1}'.format(' '.join(cmd), cwd, returncode))
+
+    def rm_remote(self, name):
+        """
+        removes a remote from mirror
+        """
+        if not name in self.get_remotes():
+            raise GitError('cannot remove {0}: remote does not exist'.format(name))
+        cmd = ['git', 'remote', 'rm', name ]
+        cwd = self.mirror_directory
+        git_remote_rm = process.ExternalProcess()
+        returncode = git_remote_rm.execute(cmd, cwd=cwd, env=None, timeout=None)
+        if returncode != 0:
+            raise GitError('failed to execute: {0}; cwd = {1}; return code = {1}'.format(' '.join(cmd), cwd, returncode))
 
     def push(self, remote):
         pass
@@ -140,7 +166,6 @@ class GitError(Exception):
 
     def __str__(self):
         return repr(self.value)
-
 
 class GitTag(object):
     def __init__(self, tag):

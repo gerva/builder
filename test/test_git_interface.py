@@ -12,6 +12,7 @@ class testGitInterface(unittest.TestCase):
     def setUp(self):
         self.mirror_dir = tempfile.mkdtemp()
         self.git = git.GitInterface(self.mirror_dir, sys.path[0])
+        self.remote_name = 'TEST_REMOTE'
 
     def tearDown(self):
         self.git.close()
@@ -35,4 +36,14 @@ class testGitInterface(unittest.TestCase):
         # branches
         self.assertTrue('master' in self.git.get_remote_branch_names('origin'))
         self.assertRaises(git.GitError, lambda: self.git.get_remote_branch_names('wrong remote name'))
+        # remotes
+        self.assertTrue('origin' in self.git.get_remotes())
+        self.assertFalse('non exisiting remote' in self.git.get_remotes())
+        self.assertRaises(git.GitError, lambda: self.git.add_remote('origin', 'url'))
+        self.assertRaises(git.GitError, lambda: self.git.rm_remote('this does not exist'))
+        self.git.add_remote(self.remote_name, 'url')
+        self.assertTrue(self.remote_name in self.git.get_remotes())
+        self.git.rm_remote(self.remote_name)
+        self.assertFalse(self.remote_name in self.git.get_remotes())
+
 
