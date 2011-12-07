@@ -1,7 +1,7 @@
 import git_interface
 import log_setup
 
-log = log_setup.logger()
+log = log_setup.logger(__name__)
 
 class GitRepository(git_interface.GitInterface):
    def __init__(self, mirror_directory, remote_repository):
@@ -19,7 +19,6 @@ class GitRepository(git_interface.GitInterface):
        self.working_directory = working_directory
        try:
            self.create_working_directory(self.working_directory)
-           self.branch(branch, 'origin/{0}'.format(branch))
        except git_interface.GitError, e:
            raise GitRepositoryError('error creating the working directory: {0}'.format(e))
 

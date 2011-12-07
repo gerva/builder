@@ -5,9 +5,9 @@ import log_setup
 import git_interface as git
 import builder.process as process
 
-log = log_setup.logger()
 
 class Project(object):
+   log = log_setup.logger(__name__)
     """
     describes a Project
     """

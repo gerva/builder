@@ -167,9 +167,11 @@ class GitInterface(object):
                return line.partition('*')[2].strip()
 
     def branch(self, name, start_point):
-        cmd = ['git', 'branch', '--track', name, start_point ]
-        cwd = self.working_directory
-        self.run(cmd, cwd, env=None, timeout=None)
+        if name not in self.get_tracked_branches():
+            cmd = ['git', 'branch', '--track', name, start_point ]
+            cwd = self.working_directory
+            self.run(cmd, cwd, env=None, timeout=None)
+        self.checkout(name)
 
     def checkout(self, name):
         if not os.path.exists(self.working_directory.name):
