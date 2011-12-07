@@ -3,9 +3,9 @@ import os
 import subprocess
 import tempfile
 import datetime
-import log
+import log_setup
 
-log = log.logger(__name__)
+log = log_setup.logger(__name__)
 
 class ExternalProcess(object):
     """
