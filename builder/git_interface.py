@@ -3,9 +3,9 @@ import process
 import tempfile
 import shutil
 import process
-import log
+import log_setup
 
-log = log.logger(__name__)
+log = log_setup.logger(__name__)
 
 class GitInterface(object):
     """
@@ -16,7 +16,7 @@ class GitInterface(object):
         self.name = remote_repository.rpartition('/')[2]
         self.remote_repository = remote_repository
         self.mirror_directory = os.path.join(mirror_directory, self.name)
-        self.working_copy = None
+        self.working_directory = None
         log.debug('created {0}'.format(self.mirror_directory))
 
     def update_mirror(self):
@@ -25,7 +25,7 @@ class GitInterface(object):
                  os.makedirs(self.mirror_directory)
             except OSError, e:
                 raise GitError('cannot create mirror directory: {0}'.format(e))
-        self.clone_mirror()
+            self.clone_mirror()
         self.fetch()
 
     def clone_mirror(self):
@@ -33,13 +33,12 @@ class GitInterface(object):
         clones the remote mirror locally
         """
         cmd = ['git', 'clone', '--mirror', self.remote_repository, self.mirror_directory]
-        git_clone = process.ExternalProcess()
-        returncode = git_clone.execute(cmd, cwd=None, env=None, timeout=None)
-        if returncode != 0:
-            raise GitError('failed to execute: {0}'.format(' '.join(cmd)))
+        self.run(cmd, cwd=None, env=None, timeout=None)
 
-    def create_working_directory(self):
-        pass
+    def create_working_directory(self, working_directory):
+        log.info('creating working directory: {0}'.format(working_directory))
+        cmd = ['git', 'clone', self.mirror_directory, working_directory]
+        self.run(cmd, cwd=None, env=None, timeout=None)
 
     def close(self):
         """
@@ -47,8 +46,8 @@ class GitInterface(object):
         the git repository anymore. It takes care of cleaning up the disk
         """
         try:
-           os.path.exists(self.working_copy)
-           shutil.rmtree(self.working_copy)
+           if os.path.exists(self.working_directory):
+               shutil.rmtree(self.working_directory)
         except TypeError, e:
            # working dir is None
            pass
@@ -59,14 +58,15 @@ class GitInterface(object):
         """
         cmd = ['git', 'fetch']
         cwd = self.mirror_directory
-        git_fetch = process.ExternalProcess()
-        returncode = git_fetch.execute(cmd, cwd=cwd, env=None, timeout=None)
-        if returncode != 0:
-            raise GitError('failed to execute: {0}; cwd = {1}; return code = {1}'.format(' '.join(cmd), cwd, returncode))
+        self.run(cmd, cwd, env=None, timeout=None)
 
     def add_tag(self, tag_name):
-        pass
-
+        """
+        adds a tag
+        """
+        cmd = ['git', 'tag', tag_name]
+        cwd = self.working_directory
+        self.run(cmd, cwd, env=None, timeout=None)
 
     def ls_remote(self, remote):
         """
@@ -76,11 +76,8 @@ class GitInterface(object):
             raise GitError('requested remote does not exist: {0}'.format(remote))
         cmd = ['git', 'ls-remote', remote]
         cwd = self.mirror_directory
-        git_ls = process.ExternalProcess()
-        returncode = git_ls.execute(cmd, cwd=cwd, env=None, timeout=None)
-        if returncode != 0:
-            raise GitError('failed to execute: {0}; cwd = {1}; return code = {1}'.format(' '.join(cmd), cwd, returncode))
-        with open(git_ls.out_fd.name) as out:
+        fd = self.run(cmd, cwd, env=None, timeout=None)
+        with open(fd.name) as out:
              lines = out.readlines()
         return lines
 
@@ -110,14 +107,19 @@ class GitInterface(object):
         """
         return [ branch.name for branch in self.get_remote_branches(remote) ]
 
+    def get_tracked_branches(self):
+        cmd = ['git', 'branch' ]
+        cwd = self.mirror_directory
+        fd = self.run(cmd, cwd, env=None, timeout=None)
+        with open(fd.name) as out:
+            lines = out.readlines()
+        return [ branch for branch in lines ]
+
     def get_remotes(self):
         cmd = ['git', 'remote', '-v']
         cwd = self.mirror_directory
-        git_remote = process.ExternalProcess()
-        returncode = git_remote.execute(cmd, cwd=cwd, env=None, timeout=None)
-        if returncode != 0:
-            raise GitError('failed to execute: {0}; cwd = {1}; return code = {1}'.format(' '.join(cmd), cwd, returncode))
-        with open(git_remote.out_fd.name) as out:
+        fd = self.run(cmd, cwd, env=None, timeout=None)
+        with open(fd.name) as out:
             lines = out.readlines()
         return [ remote.split('\t')[0] for remote in lines if  '(fetch)' in remote ]
 
@@ -130,10 +132,7 @@ class GitInterface(object):
             raise GitError('cannot add {0}: remote already exists'.format(name))
         cmd = ['git', 'remote', 'add', name, url ]
         cwd = self.mirror_directory
-        git_remote_add = process.ExternalProcess()
-        returncode = git_remote_add.execute(cmd, cwd=cwd, env=None, timeout=None)
-        if returncode != 0:
-            raise GitError('failed to execute: {0}; cwd = {1}; return code = {1}'.format(' '.join(cmd), cwd, returncode))
+        self.run(cmd, cwd=cwd, env=None, timeout=None)
 
     def rm_remote(self, name):
         """
@@ -143,10 +142,7 @@ class GitInterface(object):
             raise GitError('cannot remove {0}: remote does not exist'.format(name))
         cmd = ['git', 'remote', 'rm', name ]
         cwd = self.mirror_directory
-        git_remote_rm = process.ExternalProcess()
-        returncode = git_remote_rm.execute(cmd, cwd=cwd, env=None, timeout=None)
-        if returncode != 0:
-            raise GitError('failed to execute: {0}; cwd = {1}; return code = {1}'.format(' '.join(cmd), cwd, returncode))
+        self.run(cmd, cwd=cwd, env=None, timeout=None)
 
     def push(self, remote):
         pass
@@ -159,6 +155,39 @@ class GitInterface(object):
 
     def git_push_branch(self, branch_name, remote_branch_name, remote):
         pass
+
+    def current_branch(self):
+        cmd = ['git', 'branch']
+        cwd = self.working_directory
+        fd = self.run(cmd, cwd=cwd, env=None, timeout=None)
+        with open(fd.name, 'r') as out:
+            lines = out.readlines()
+        for line in lines:
+            if '*' in line:
+               return line.partition('*')[2].strip()
+
+    def branch(self, name, start_point):
+        cmd = ['git', 'branch', '--track', name, start_point ]
+        cwd = self.working_directory
+        self.run(cmd, cwd, env=None, timeout=None)
+
+    def checkout(self, name):
+        if not os.path.exists(self.working_directory.name):
+            raise GitError('checkout branch: working directory does not exist')
+        cmd = ['git', 'checkout', name]
+        cwd = self.working_directory
+        self.run(cmd, cwd, env=None, timeout=None)
+
+    def run(self, cmd, cwd, env, timeout):
+        proc = process.ExternalProcess()
+        try:
+            returncode = proc.execute(cmd, cwd=cwd, env=None, timeout=None)
+            if returncode != 0:
+                raise GitError('error running: {0}; cwd = {1}; return code = {1}'.format(' '.join(cmd), cwd, returncode))
+            std_out = proc.out_fd
+            return std_out
+        except process.ExternalProcessError, e:
+            raise GitError('failed to execute: {0}; cwd = {1}'.format(' '.join(cmd), cwd))
 
 class GitError(Exception):
     def __init__(self, value):
